@@ -526,6 +526,68 @@ for idx, row in feature_importance.head(15).iterrows():
 #
 # In this notebook, we successfully built a spam detection system using logistic regression. However, can you see why this approach might fail if I were to deploy it and not retrain it frequently?
 
+# %% [markdown]
+# ### Why This Model Would Fail in Production Without Retraining
+# 
+# Let's demonstrate with some examples of how spammers might evolve:
+
+# %%
+# Examples of evolved spam that would likely bypass our model
+evolved_spam_examples = [
+    # Character substitution
+    "Fr33 M0n3y N0W! C1ick h3r3 for amaz1ng d3als!",
+    
+    # New technology terms (post-training)
+    "Exclusive NFT drop! Mint your crypto fortune today!",
+    
+    # Misspellings and creative spacing
+    "F R E E   G I F T S   A V A I L A B L E   N O W",
+    
+    # New scam types
+    "Your Amazon Prime account needs verification. Click here to avoid suspension.",
+    
+    # Social media style
+    "OMG bestie! This side hustle is literally printing money 💰💰💰 DM me!"
+]
+
+print("Testing our model on evolved spam examples:")
+print("=" * 60)
+
+for i, message in enumerate(evolved_spam_examples, 1):
+    prediction = pipeline.predict([message])[0]
+    probability = pipeline.predict_proba([message])[0]
+    
+    label = "SPAM" if prediction == 1 else "HAM"
+    spam_prob = probability[1]
+    
+    print(f"\nExample {i}: {message}")
+    print(f"Prediction: {label}")
+    print(f"Spam Probability: {spam_prob:.3f}")
+    
+    # Check if any words from this message are in our vocabulary
+    bow_vector = pipeline.named_steps['bow'].transform([message])
+    recognized_words = bow_vector.nnz
+    total_words = len(message.split())
+    
+    print(f"Words recognized by model: {recognized_words}/{total_words} ({recognized_words/total_words:.1%})")
+
+# %% [markdown]
+# ### Key Production Challenges:
+# 
+# 1. **Concept Drift**: Spammers constantly evolve their tactics
+# 2. **Vocabulary Limitations**: New words/phrases won't be recognized
+# 3. **Adversarial Adaptation**: Spammers deliberately try to evade detection
+# 4. **Static Feature Engineering**: Fixed n-grams miss evolving patterns
+# 
+# ### Solutions for Production:
+# 
+# 1. **Continuous Learning**: Regular retraining with new data
+# 2. **Feature Engineering**: Dynamic vocabulary updates
+# 3. **Ensemble Methods**: Multiple models with different strengths
+# 4. **Deep Learning**: Models that can learn representations
+# 5. **Human-in-the-Loop**: Expert review of edge cases
+# 6. **A/B Testing**: Gradual deployment of model updates
+
 # %%
 print("Analysis complete! 🎉")
 print(f"Final model accuracy: {accuracy:.1%}")
