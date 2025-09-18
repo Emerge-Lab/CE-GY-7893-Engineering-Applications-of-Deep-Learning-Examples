@@ -637,13 +637,13 @@ print(f"\nWeight correlation between models: {correlation:.4f}")
 #
 # ### Why Use Scikit-learn in Practice?
 #
-# - It'll do the thing you want quickly
+# It'll do the thing you want quickly. But, you'll sometimes need something customized and then maybe you want to break out the explicit solution. Besides which, if you don't understand what it's doing under the hood things can go very awry.
 
 # %% [markdown]
 # ## Model Evaluation
 
 # %%
-# Make predictions (using scikit-learn model for consistency with rest of notebook)
+# Make predictions (using scikit-learn model)
 y_pred = pipeline.predict(X_test)
 y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
 
@@ -775,7 +775,7 @@ for idx, row in feature_importance.head(15).iterrows():
 # In this notebook, we successfully built a spam detection system using logistic regression. However, can you see why this approach might fail if I were to deploy it and not retrain it frequently?
 
 # %% [markdown]
-# ### Why This Model Would Fail in Production Without Retraining
+# ### Why This Model Might Fail in Production Without Retraining
 #
 # Let's demonstrate with some examples of how spammers might evolve:
 
@@ -820,8 +820,10 @@ for i, message in enumerate(evolved_spam_examples, 1):
     print(f"Words recognized by model: {recognized_words}/{total_words} ({recognized_words/total_words:.1%})")
 
 # %%
-print("Analysis complete! 🎉")
+print("Analysis complete!")
 print(f"Final model accuracy: {accuracy:.1%}")
 print(f"Final model AUC score: {auc_score:.3f}")
+
+# %%
 
 # %%
