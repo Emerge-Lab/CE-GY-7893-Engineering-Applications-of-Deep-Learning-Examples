@@ -1,0 +1,10 @@
+[project]
+name = "ce-gy-7893-engineering-applications-of-deep-learning-examples"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "jupyter>=1.1.1",
+    "jupyterlab>=4.4.7",
+    "jupytext>=1.17.3",
+]
