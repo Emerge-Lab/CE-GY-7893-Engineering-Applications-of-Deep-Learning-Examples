@@ -392,10 +392,258 @@ else:  # If many features, show top ones
     plt.show()
 
 # %% [markdown]
+# ## Implementing Logistic Regression with Gradient Descent
+#
+# Before we evaluate our scikit-learn model, let's implement logistic regression from scratch
+# using gradient descent to understand what's happening under the hood.
+
+# %% [markdown]
+# ### Mathematical Foundation
+#
+# Logistic regression uses the sigmoid function to map any real number to a probability between 0 and 1:
+#
+# $$\sigma(z) = \frac{1}{1 + e^{-z}}$$
+#
+# Where $z = \mathbf{w}^T \mathbf{x} + b$ (weights times features plus bias)
+#
+# The cost function (log-loss) we want to minimize is:
+# $$J(\mathbf{w}) = -\frac{1}{m} \sum_{i=1}^{m} [y^{(i)} \log(h_\theta(x^{(i)})) + (1-y^{(i)}) \log(1-h_\theta(x^{(i)}))]$$
+
+# %%
+# Implement logistic regression from scratch
+class LogisticRegressionGD:
+    """Logistic Regression using Gradient Descent"""
+    
+    def __init__(self, learning_rate=0.01, max_iterations=1000, tolerance=1e-6):
+        self.learning_rate = learning_rate
+        self.max_iterations = max_iterations
+        self.tolerance = tolerance
+        self.weights = None
+        self.bias = None
+        self.cost_history = []
+        
+    def sigmoid(self, z):
+        """Sigmoid activation function"""
+        # Clip z to prevent overflow
+        z = np.clip(z, -500, 500)
+        return 1 / (1 + np.exp(-z))
+    
+    def compute_cost(self, y_true, y_pred):
+        """Compute logistic regression cost (log-loss)"""
+        # Add small epsilon to prevent log(0)
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        
+        m = len(y_true)
+        cost = -1/m * np.sum(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+        return cost
+    
+    def fit(self, X, y):
+        """Train the logistic regression model using gradient descent"""
+        # Initialize parameters
+        m, n = X.shape
+        self.weights = np.zeros(n)
+        self.bias = 0
+        
+        # Gradient descent
+        for i in range(self.max_iterations):
+            # Forward pass
+            z = X.dot(self.weights) + self.bias
+            predictions = self.sigmoid(z)
+            
+            # Compute cost
+            cost = self.compute_cost(y, predictions)
+            self.cost_history.append(cost)
+            
+            # Compute gradients
+            dw = (1/m) * X.T.dot(predictions - y)
+            db = (1/m) * np.sum(predictions - y)
+            
+            # Update parameters
+            self.weights -= self.learning_rate * dw
+            self.bias -= self.learning_rate * db
+            
+            # Check for convergence
+            if i > 0 and abs(self.cost_history[-2] - self.cost_history[-1]) < self.tolerance:
+                print(f"Converged after {i+1} iterations")
+                break
+                
+        print(f"Final cost: {cost:.6f}")
+        return self
+    
+    def predict_proba(self, X):
+        """Predict class probabilities"""
+        z = X.dot(self.weights) + self.bias
+        return self.sigmoid(z)
+    
+    def predict(self, X):
+        """Make binary predictions"""
+        return (self.predict_proba(X) >= 0.5).astype(int)
+
+# %% [markdown]
+# ### Training Our Custom Model
+#
+# Let's train our gradient descent implementation on the same bag of words features:
+
+# %%
+# Get the bag of words features from our pipeline
+X_train_bow = pipeline.named_steps['bow'].transform(X_train).toarray()
+X_test_bow = pipeline.named_steps['bow'].transform(X_test).toarray()
+
+print(f"Training set shape: {X_train_bow.shape}")
+print(f"Test set shape: {X_test_bow.shape}")
+
+# Train our custom logistic regression
+print("Training custom logistic regression with gradient descent...")
+custom_lr = LogisticRegressionGD(learning_rate=0.1, max_iterations=1000)
+custom_lr.fit(X_train_bow, y_train.values)
+
+# %% [markdown]
+# ### Visualizing the Learning Process
+
+# %%
+# Plot the cost function over iterations
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.plot(custom_lr.cost_history)
+plt.title('Cost Function During Training')
+plt.xlabel('Iteration')
+plt.ylabel('Cost (Log-Loss)')
+plt.grid(True, alpha=0.3)
+
+# Zoom in on the last part of training
+plt.subplot(1, 2, 2)
+start_idx = max(0, len(custom_lr.cost_history) - 200)
+plt.plot(range(start_idx, len(custom_lr.cost_history)), custom_lr.cost_history[start_idx:])
+plt.title('Cost Function (Last 200 Iterations)')
+plt.xlabel('Iteration')
+plt.ylabel('Cost (Log-Loss)')
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ### Comparing Our Implementation with Scikit-learn
+
+# %%
+# Make predictions with our custom model
+custom_y_pred = custom_lr.predict(X_test_bow)
+custom_y_pred_proba = custom_lr.predict_proba(X_test_bow)
+
+# Get scikit-learn predictions for comparison
+sklearn_y_pred = pipeline.predict(X_test)
+sklearn_y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
+
+# Compare accuracies
+custom_accuracy = accuracy_score(y_test, custom_y_pred)
+sklearn_accuracy = accuracy_score(y_test, sklearn_y_pred)
+
+print("Model Comparison:")
+print("=" * 40)
+print(f"Custom Gradient Descent Accuracy: {custom_accuracy:.4f}")
+print(f"Scikit-learn Accuracy:           {sklearn_accuracy:.4f}")
+print(f"Difference:                      {abs(custom_accuracy - sklearn_accuracy):.4f}")
+
+# Compare AUC scores
+custom_auc = roc_auc_score(y_test, custom_y_pred_proba)
+sklearn_auc = roc_auc_score(y_test, sklearn_y_pred_proba)
+
+print(f"\nCustom Gradient Descent AUC:     {custom_auc:.4f}")
+print(f"Scikit-learn AUC:                {sklearn_auc:.4f}")
+print(f"Difference:                      {abs(custom_auc - sklearn_auc):.4f}")
+
+# %% [markdown]
+# ### Visualizing Model Comparison
+
+# %%
+# Create comparison visualization
+fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+
+# ROC Curves comparison
+fpr_custom, tpr_custom, _ = roc_curve(y_test, custom_y_pred_proba)
+fpr_sklearn, tpr_sklearn, _ = roc_curve(y_test, sklearn_y_pred_proba)
+
+axes[0, 0].plot(fpr_custom, tpr_custom, color='red', lw=2, 
+                label=f'Custom GD (AUC = {custom_auc:.3f})')
+axes[0, 0].plot(fpr_sklearn, tpr_sklearn, color='blue', lw=2, 
+                label=f'Scikit-learn (AUC = {sklearn_auc:.3f})')
+axes[0, 0].plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')
+axes[0, 0].set_xlim([0.0, 1.0])
+axes[0, 0].set_ylim([0.0, 1.05])
+axes[0, 0].set_xlabel('False Positive Rate')
+axes[0, 0].set_ylabel('True Positive Rate')
+axes[0, 0].set_title('ROC Curve Comparison')
+axes[0, 0].legend(loc="lower right")
+
+# Prediction probability comparison
+axes[0, 1].scatter(sklearn_y_pred_proba, custom_y_pred_proba, alpha=0.6)
+axes[0, 1].plot([0, 1], [0, 1], 'r--', lw=2)
+axes[0, 1].set_xlabel('Scikit-learn Predicted Probability')
+axes[0, 1].set_ylabel('Custom GD Predicted Probability')
+axes[0, 1].set_title('Prediction Probability Comparison')
+axes[0, 1].grid(True, alpha=0.3)
+
+# Feature weights comparison (top 20 features)
+feature_names = pipeline.named_steps['bow'].get_feature_names_out()
+sklearn_coef = pipeline.named_steps['classifier'].coef_[0]
+
+# Get top 20 features by absolute weight in sklearn model
+top_indices = np.argsort(np.abs(sklearn_coef))[-20:]
+top_features = feature_names[top_indices]
+sklearn_top_weights = sklearn_coef[top_indices]
+custom_top_weights = custom_lr.weights[top_indices]
+
+x_pos = np.arange(len(top_features))
+width = 0.35
+
+axes[1, 0].barh(x_pos - width/2, sklearn_top_weights, width, 
+                label='Scikit-learn', alpha=0.8)
+axes[1, 0].barh(x_pos + width/2, custom_top_weights, width, 
+                label='Custom GD', alpha=0.8)
+axes[1, 0].set_yticks(x_pos)
+axes[1, 0].set_yticklabels(top_features)
+axes[1, 0].set_xlabel('Weight Value')
+axes[1, 0].set_title('Top 20 Feature Weights Comparison')
+axes[1, 0].legend()
+
+# Weight correlation
+axes[1, 1].scatter(sklearn_coef, custom_lr.weights, alpha=0.6)
+axes[1, 1].plot([sklearn_coef.min(), sklearn_coef.max()], 
+                [sklearn_coef.min(), sklearn_coef.max()], 'r--', lw=2)
+axes[1, 1].set_xlabel('Scikit-learn Weights')
+axes[1, 1].set_ylabel('Custom GD Weights')
+axes[1, 1].set_title('All Feature Weights Correlation')
+axes[1, 1].grid(True, alpha=0.3)
+
+# Calculate correlation
+correlation = np.corrcoef(sklearn_coef, custom_lr.weights)[0, 1]
+axes[1, 1].text(0.05, 0.95, f'Correlation: {correlation:.4f}', 
+                transform=axes[1, 1].transAxes, fontsize=12,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5))
+
+plt.tight_layout()
+plt.show()
+
+print(f"\nWeight correlation between models: {correlation:.4f}")
+
+# %% [markdown]
+# ### Some takeaways
+#
+# 1. **Similar Performance**: Our gradient descent implementation achieves very similar results to scikit-learn
+# 2. **Learning Process**: We can visualize how the cost function decreases during training
+# 3. **Weight Correlation**: The learned weights are highly correlated between implementations. *Why might they be different?*
+#
+# ### Why Use Scikit-learn in Practice?
+#
+# - It'll do the thing you want quickly
+
+# %% [markdown]
 # ## Model Evaluation
 
 # %%
-# Make predictions
+# Make predictions (using scikit-learn model for consistency with rest of notebook)
 y_pred = pipeline.predict(X_test)
 y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
 
@@ -528,7 +776,7 @@ for idx, row in feature_importance.head(15).iterrows():
 
 # %% [markdown]
 # ### Why This Model Would Fail in Production Without Retraining
-# 
+#
 # Let's demonstrate with some examples of how spammers might evolve:
 
 # %%
@@ -570,23 +818,6 @@ for i, message in enumerate(evolved_spam_examples, 1):
     total_words = len(message.split())
     
     print(f"Words recognized by model: {recognized_words}/{total_words} ({recognized_words/total_words:.1%})")
-
-# %% [markdown]
-# ### Key Production Challenges:
-# 
-# 1. **Concept Drift**: Spammers constantly evolve their tactics
-# 2. **Vocabulary Limitations**: New words/phrases won't be recognized
-# 3. **Adversarial Adaptation**: Spammers deliberately try to evade detection
-# 4. **Static Feature Engineering**: Fixed n-grams miss evolving patterns
-# 
-# ### Solutions for Production:
-# 
-# 1. **Continuous Learning**: Regular retraining with new data
-# 2. **Feature Engineering**: Dynamic vocabulary updates
-# 3. **Ensemble Methods**: Multiple models with different strengths
-# 4. **Deep Learning**: Models that can learn representations
-# 5. **Human-in-the-Loop**: Expert review of edge cases
-# 6. **A/B Testing**: Gradual deployment of model updates
 
 # %%
 print("Analysis complete! 🎉")
