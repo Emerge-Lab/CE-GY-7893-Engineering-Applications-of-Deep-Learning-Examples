@@ -60,7 +60,7 @@ dataset_files = os.listdir(path)
 print("Files in dataset:", dataset_files)
 
 # Load the CSV file 
-dataset_file = csv_files[0]  # Take the first CSV file
+dataset_file = dataset_files[0]  # Take the first CSV file
 df = pd.read_csv(os.path.join(path, dataset_file))
 print(f"\nLoaded dataset: {dataset_file}")
 print(f"Dataset shape: {df.shape}")
@@ -70,6 +70,8 @@ print(df.sample(20))
 
 # %%
 # Rename columns for consistency
+text_col = 'text'
+label_col = 'spam'
 df = df.rename(columns={text_col: 'message', label_col: 'label'})
 
 # Check unique values in label column
