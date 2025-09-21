@@ -62,16 +62,13 @@ print("Files in dataset:", dataset_files)
 
 # Load the CSV file
 csv_files = [f for f in dataset_files if f.endswith('.csv')]
-if csv_files:
-    dataset_file = csv_files[0]  # Take the first CSV file
-    df = pd.read_csv(os.path.join(path, dataset_file))
-    print(f"\nLoaded dataset: {dataset_file}")
-    print(f"Dataset shape: {df.shape}")
-    print(f"Column names: {list(df.columns)}")
-    print("\nFirst few rows:")
-    print(df.head())
-else:
-    print("No CSV files found in the dataset directory")
+dataset_file = csv_files[0]  # Take the first CSV file
+df = pd.read_csv(os.path.join(path, dataset_file))
+print(f"\nLoaded dataset: {dataset_file}")
+print(f"Dataset shape: {df.shape}")
+print(f"Column names: {list(df.columns)}")
+print("\nFirst few rows:")
+print(df.head())
 
 # %%
 # Examine the dataset structure
@@ -97,19 +94,7 @@ print(df.head())
 # %%
 # Identify target and features
 # The target is typically 'price' in housing datasets
-target_candidates = ['price', 'house_price', 'home_price', 'value']
-target_col = None
-
-for candidate in target_candidates:
-    if candidate in df.columns:
-        target_col = candidate
-        break
-
-# If no obvious target found, use the last column (common in housing datasets)
-if target_col is None:
-    target_col = df.columns[-1]
-
-print(f"Using '{target_col}' as target variable")
+target_col = 'price'
 
 # Get all numeric features except target
 numeric_features = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -122,6 +107,10 @@ print(f"Target variable: {target_col}")
 # Remove any non-numeric or problematic columns
 categorical_features = df.select_dtypes(include=['object']).columns.tolist()
 print(f"Categorical features: {categorical_features}")
+
+# %% [markdown]
+# ### Data cleaning
+# Below, we do some normal data preprocessing steps. They're not necessary in this dataset but I want to point out that they're frequently necessary on data that is not as clean as Kaggle data i.e. most real data
 
 # %%
 # Handle missing values and prepare data
@@ -174,8 +163,13 @@ else:
 plt.tight_layout()
 plt.show()
 
+# %% [markdown]
+# ### Feature analysis
+# Feature analysis and correlation. Generally if two features are highly, highly correlated
+# it is bad to include both of them without some additional tricks. If you're interested in 
+# in learning more, the relevant term is "multi-collinearity"
+
 # %%
-# Feature analysis and correlation
 print(f"Feature statistics:")
 print(df_clean[numeric_features].describe())
 
@@ -518,11 +512,12 @@ for method in methods_closed:
 # %% [markdown]
 # ### Understanding the Differences
 #
-# 1. **Linear Solver (`np.linalg.solve`)** - RECOMMENDED
+# 1. **Linear Solver (`np.linalg.solve`)** - RECOMMENDED THOUGH READ THE WARNING
 #    - Solves the system $(X^T X) w = X^T y$ directly
 #    - Most numerically stable and efficient
 #    - Uses LU decomposition internally
 #    - Fails only if matrix is truly singular
+#    - WARNING: I'm using np.linalg.solve here for didactic reasons, in reality you would probably use np.linalg.lstsq which is more numerically stable but I wanted you to see the explicit use of $X^T X$. It's hard to explain much more without going into numerical linear algebra.  
 #
 # 2. **Pseudo-inverse (`np.linalg.pinv`)**
 #    - Computes $w = X^{\dagger} y$ where $X^{\dagger}$ is the pseudo-inverse

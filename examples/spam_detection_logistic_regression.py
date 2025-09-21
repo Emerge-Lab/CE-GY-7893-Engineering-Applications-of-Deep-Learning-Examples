@@ -44,7 +44,7 @@ sns.set_palette("husl")
 # ## Load Real Spam Email Dataset
 #
 # We'll use a "real" spam email dataset from Kaggle to make our analysis more realistic and robust.
-# This dataset contains actual spam and ham (legitimate) emails.
+# This dataset contains actual spam and ham (legitimate) emails. The community calls the positive labels ham for I assume reasons of it being a cute little pun (though tbf, I think spam is very delicious so I'm not sure I see where they're coming from)
 
 # %%
 # Download the spam email dataset from Kaggle
@@ -69,7 +69,7 @@ print("\nSome random rows:")
 print(df.sample(20))
 
 # %%
-# Rename columns for consistency
+# Rename columns for ease of labeling
 text_col = 'text'
 label_col = 'spam'
 df = df.rename(columns={text_col: 'message', label_col: 'label'})
@@ -79,31 +79,6 @@ print(f"\nUnique labels: {df['label'].unique()}")
 print(f"Label counts:\n{df['label'].value_counts()}")
 
 # %%
-# Standardize labels to 0 (ham) and 1 (spam)
-# Handle different label formats
-if df['label'].dtype == 'object':
-    # If labels are strings, map them to numbers
-    unique_labels = df['label'].unique()
-    print(f"Original labels: {unique_labels}")
-    
-    # Common mappings
-    label_mapping = {}
-    for label in unique_labels:
-        label_str = str(label).lower()
-        if 'spam' in label_str or label_str in ['1', '1.0']:
-            label_mapping[label] = 1
-        elif 'ham' in label_str or 'legitimate' in label_str or label_str in ['0', '0.0']:
-            label_mapping[label] = 0
-        else:
-            # If unclear, assume first unique value is ham (0), second is spam (1)
-            if label == unique_labels[0]:
-                label_mapping[label] = 0
-            else:
-                label_mapping[label] = 1
-    
-    print(f"Label mapping: {label_mapping}")
-    df['label'] = df['label'].map(label_mapping)
-
 # Ensure labels are integers
 df['label'] = df['label'].astype(int)
 
@@ -116,12 +91,12 @@ print(f"Ham messages: {df[df['label'] == 0].shape[0]}")
 print(f"Spam ratio: {df['label'].mean():.3f}")
 
 # Show sample messages
-print(f"\nSample spam messages:")
+print(f"Sample spam messages:")
 spam_samples = df[df['label'] == 1]['message'].head(3)
 for i, msg in enumerate(spam_samples, 1):
     print(f"{i}. {msg[:100]}..." if len(msg) > 100 else f"{i}. {msg}")
 
-print(f"\nSample ham messages:")
+print(f"Sample ham messages:")
 ham_samples = df[df['label'] == 0]['message'].head(3)
 for i, msg in enumerate(ham_samples, 1):
     print(f"{i}. {msg[:100]}..." if len(msg) > 100 else f"{i}. {msg}")
@@ -132,16 +107,16 @@ for i, msg in enumerate(ham_samples, 1):
 # %%
 # Display first few messages
 print("Sample messages:")
-print("\nSpam messages:")
+print("Spam messages:")
 print(df[df['label'] == 1]['message'].head(3).values)
-print("\nHam messages:")
+print("Ham messages:")
 print(df[df['label'] == 0]['message'].head(3).values)
 
 # %% [markdown]
 # ## Understanding Bag of Words (BoW)
 #
 # Before we build our model, let's understand how **Bag of Words** works step by step.
-# Bag of Words is a fundamental text representation technique that converts text into numerical vectors.
+# Bag of Words is a fundamental text representation technique that converts text into numerical vectors by assigning each word to a one-hot vector and then making the feature into the sum of the vectors.
 
 # %% [markdown]
 # ### Step 1: Building the Vocabulary
@@ -269,7 +244,6 @@ print(f"Test set spam ratio: {y_test.mean():.2f}")
 # ## Model Training
 #
 # We'll use a pipeline that combines Bag of Words vectorization with Logistic Regression.
-# Logistic Regression is a linear model that's well-suited for binary classification tasks.
 
 # %%
 # Create and train the model pipeline
@@ -278,7 +252,7 @@ pipeline = Pipeline([
         max_features=1000,  # Limit to top 1000 features
         stop_words='english',  # Remove common English stop words
         lowercase=True,  # Convert to lowercase
-        ngram_range=(1, 2)  # Use both unigrams and bigrams
+        ngram_range=(1, 1)  # Use both unigrams and bigrams
     )),
     ('classifier', LogisticRegression(
         random_state=42,
@@ -305,34 +279,6 @@ feature_names = bow_vectorizer.get_feature_names_out()
 
 print(f"Vocabulary size: {len(feature_names)}")
 print(f"Sample of 20 random words: {random.sample(list(feature_names), 20)}")
-
-# %% [markdown]
-# ### Understanding N-grams in Bag of Words
-#
-# Notice that our vocabulary contains both single words (unigrams) and two-word phrases (bigrams).
-# This is because we set `ngram_range=(1, 2)` in our CountVectorizer.
-#
-# - **Unigrams (1-gram)**: Single words like "free", "money", "click"
-# - **Bigrams (2-gram)**: Two-word phrases like "free money", "click here", "amazing deals"
-#
-# Let's separate and examine these different types of features:
-
-# %%
-# Separate unigrams and bigrams
-unigrams = [word for word in feature_names if ' ' not in word]
-bigrams = [word for word in feature_names if ' ' in word]
-
-print(f"Total features: {len(feature_names)}")
-print(f"Unigrams (single words): {len(unigrams)}")
-print(f"Bigrams (two-word phrases): {len(bigrams)}")
-
-print(f"\Random 20 unigrams: {random.sample(list(unigrams), 20)}")
-print(f"\Random 20 bigrams: {random.sample(list(bigrams), 20)}")
-
-print(f"\nWhy use bigrams?")
-print("- Captures phrases like 'free money' which is more spam-indicative than just 'free' or 'money' alone")
-print("- Helps with context: 'account closed' vs just 'account' or 'closed'")
-print("- Can improve classification performance by capturing common spam phrases")
 
 # %%
 # Visualize the bag of words matrix for a subset of messages
@@ -825,7 +771,3 @@ for i, message in enumerate(evolved_spam_examples, 1):
 print("Analysis complete!")
 print(f"Final model accuracy: {accuracy:.1%}")
 print(f"Final model AUC score: {auc_score:.3f}")
-
-# %%
-
-# %%
